@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import axios from 'axios';
 
 function AdminLogin() {
   const [phone, setPhone] = useState('');
@@ -12,13 +13,7 @@ function AdminLogin() {
   const [dummyOtp, setDummyOtp] = useState('');
   const navigate = useNavigate();
 
-  // Hardcoded admin credentials
-  const adminCredentials = {
-    phone: '9999999999',
-    password: 'admin123',
-  };
-
-  const handlePhonePasswordSubmit = (e) => {
+  const handlePhonePasswordSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccessMessage('');
@@ -29,29 +24,27 @@ function AdminLogin() {
       setLoading(false);
       return;
     }
-
     if (!password.trim()) {
       setError('Password is required');
       setLoading(false);
       return;
     }
 
-    // Validate credentials locally
-    setTimeout(() => {
-      if (phone !== adminCredentials.phone || password !== adminCredentials.password) {
+    try {
+      const response = await axios.post('http://localhost:1014/api/admin/login', { phone, password });
+      if (response.status === 200) {
+        setIsOtpSent(true);
+        const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+        setDummyOtp(generatedOtp);
+        setSuccessMessage(`(Captcha: ${generatedOtp})`);
+      } else {
         setError('Invalid phone number or password. Only admins can log in here.');
-        setLoading(false);
-        return;
       }
-
-      setIsOtpSent(true);
-
-      // Generate a dummy OTP locally
-      const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-      setDummyOtp(generatedOtp);
-      setSuccessMessage(`(Captcha: ${generatedOtp})`);
+    } catch {
+      setError('Invalid phone number or password. Only admins can log in here.');
+    } finally {
       setLoading(false);
-    }, 1000); // Simulate a 1-second delay for "network" request
+    }
   };
 
   const handleOtpSubmit = (e) => {
@@ -66,14 +59,12 @@ function AdminLogin() {
       return;
     }
 
-    // Verify OTP locally
     setTimeout(() => {
       if (otp !== dummyOtp) {
         setError('Invalid Captcha. Please try again.');
         setLoading(false);
         return;
       }
-
       setSuccessMessage('Admin login successful! Redirecting to dashboard...');
       setTimeout(() => {
         navigate('/admin-dashboard');
@@ -86,7 +77,6 @@ function AdminLogin() {
     setError('');
     setSuccessMessage('');
     setLoading(true);
-
     setTimeout(() => {
       const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
       setDummyOtp(generatedOtp);
@@ -128,7 +118,7 @@ function AdminLogin() {
             />
           </div>
           <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? 'Sending...' : 'Send OTP'}
+            {loading ? 'Logging in...' : 'Send OTP'}
           </button>
         </form>
       ) : (
